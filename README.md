@@ -72,12 +72,28 @@ You can install Postman via this website: https://www.postman.com/downloads/
     -   [ ] Write answers of your learning module's "Reflection Publisher-3" questions in this README.
 
 ## Your Reflections
+### Dear TA, please note that my first commit in this repo is done in the master branch, commits after that is done in the branch 'tutorial-5'.
 This is the place for you to write reflections:
 
 ### Mandatory (Publisher) Reflections
 
 #### Reflection Publisher-1
+1. In this BambangShop case, a single `Subscriber` struct is enough for now because we only have one concrete observer behavior: send notification to one webhook URL. Using a trait would be more useful if we had multiple subscriber types with different update behaviors (for example HTTP subscriber, email subscriber, message-queue subscriber), so the Subject can treat them polymorphically. Since current requirements only need one observer representation and uniform behavior, trait abstraction is optional, not mandatory.
+
+2. For uniqueness requirements (`Product.id` and `Subscriber.url`), `Vec` can work functionally but is less suitable as the data grows because checking uniqueness, searching, and deleting are O(n). A map structure (`DashMap`/`HashMap`) is more appropriate because key uniqueness is natural and operations by key are effectively O(1) average. So for this repository use case, map-based storage is the better choice and aligns with the unique-key intent in the model.
+
+3. Singleton and DashMap solve different problems. Singleton controls instance count/access pattern ("only one shared repository"), while DashMap provides safe concurrent read/write access to shared data. In Rust, we still need a thread-safe container for global mutable state even if we use Singleton style. In this project, `lazy_static` already gives singleton-like global access, and `DashMap` is still needed to prevent data races and avoid manual locking complexity. So Singleton does not replace DashMap; they are complementary.
 
 #### Reflection Publisher-2
+1. We separate `Service` and `Repository` from `Model` to follow Single Responsibility Principle and Separation of Concerns. The `Model` struct should represent domain data and small domain behaviors, `Repository` focuses on persistence/data access details, and `Service` orchestrates use cases/business workflows across multiple models. This separation makes each layer easier to change independently. For example, we can replace in-memory storage with a real database by changing repository code without rewriting core business flow in services or data structure definitions in models.
+
+2. If we only use `Model`, each model (`Program`, `Subscriber`, `Notification`) would likely contain mixed responsibilities: HTTP payload handling, validation, storage access, and cross-model orchestration. Interactions become tightly coupled, so a change in one flow (for example subscribe/unsubscribe behavior) can force edits in multiple model internals. Over time this increases method size, conditional branching, and hidden dependencies, making testing harder because unit tests must prepare more context (storage + networking + business rules) even for simple behavior.
+
+3. Postman helps me test this project faster because I can call endpoints repeatedly with controlled request bodies and quickly inspect status code and response JSON. It is especially useful to verify the notification flow step-by-step (subscribe, publish/create/delete product, then unsubscribe) without building a custom client first. Features I find most helpful for current and future projects are Collections (organize API scenarios), Environment Variables (switch base URL/ports easily), Tests scripts (automatic response assertions), and Collection Runner (repeat many requests to do regression checks).
 
 #### Reflection Publisher-3
+1. In this tutorial, we use the Push variation of Observer Pattern. The publisher actively sends notification payloads to each subscriber endpoint when product events happen (create/delete/promotion), so subscribers do not need to ask for updates.
+
+2. If we imagine using Pull instead, one advantage is a lighter publisher payload contract because publisher can send minimal signal (or even just event metadata), then subscriber fetches details when needed. Pull can also reduce wasted payload transfer for subscribers that only need partial fields. However, for this case the disadvantages are bigger: subscribers need extra request logic, event delivery becomes less immediate, there are more network round-trips, and consistency can degrade if product data changes between event time and fetch time. Push is simpler for near-real-time webhook-style notification used in this module.
+
+3. Without multi-threading in notification dispatch, notifications would be sent sequentially (one subscriber at a time). This makes response time slower as subscriber count grows, and one slow/unreachable subscriber can block the whole publish flow longer. In the worst case, user-facing operations that trigger notifications (such as create/delete product) feel laggy or timeout more easily. Multi-threading improves throughput and isolates slow subscribers so the system stays more responsive.
