@@ -36,4 +36,21 @@ impl SubscriberRepository {
             .map(|f| f.value().clone())
             .collect();
     }
+
+    pub fn delete(product_type: &str, url: &str) -> Option<Subscriber> {
+        if SUBSCRIBERS.get(product_type).is_none() {
+            SUBSCRIBERS.insert(String::from(product_type), DashMap::new());
+        }
+
+        let result = SUBSCRIBERS
+            .get(product_type)
+            .unwrap()
+            .remove(url);
+
+        if let Some((_, subscriber)) = result {
+            return Some(subscriber);
+        }
+
+        None
+    }
 }
