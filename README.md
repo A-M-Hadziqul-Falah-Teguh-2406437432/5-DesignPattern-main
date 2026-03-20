@@ -78,6 +78,11 @@ This is the place for you to write reflections:
 ### Mandatory (Publisher) Reflections
 
 #### Reflection Publisher-1
+1. In this BambangShop case, a single `Subscriber` struct is enough for now because we only have one concrete observer behavior: send notification to one webhook URL. Using a trait would be more useful if we had multiple subscriber types with different update behaviors (for example HTTP subscriber, email subscriber, message-queue subscriber), so the Subject can treat them polymorphically. Since current requirements only need one observer representation and uniform behavior, trait abstraction is optional, not mandatory.
+
+2. For uniqueness requirements (`Product.id` and `Subscriber.url`), `Vec` can work functionally but is less suitable as the data grows because checking uniqueness, searching, and deleting are O(n). A map structure (`DashMap`/`HashMap`) is more appropriate because key uniqueness is natural and operations by key are effectively O(1) average. So for this repository use case, map-based storage is the better choice and aligns with the unique-key intent in the model.
+
+3. Singleton and DashMap solve different problems. Singleton controls instance count/access pattern ("only one shared repository"), while DashMap provides safe concurrent read/write access to shared data. In Rust, we still need a thread-safe container for global mutable state even if we use Singleton style. In this project, `lazy_static` already gives singleton-like global access, and `DashMap` is still needed to prevent data races and avoid manual locking complexity. So Singleton does not replace DashMap; they are complementary.
 
 #### Reflection Publisher-2
 
